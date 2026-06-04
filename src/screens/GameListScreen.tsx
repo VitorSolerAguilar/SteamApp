@@ -1,19 +1,92 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator, StyleSheet, } from 'react-native';
+import React, { useEffect, useState, useReducer } from 'react';
+import { View, Text, FlatList, Image, TouchableOpacity, ActivityIndicator, TextInput, StyleSheet, } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { steamApi } from '../services/steamApi';
 import { Game, RootStackParamList } from '../types';
 
-type Props = {navigation: NativeStackNavigationProp<RootStackParamList, 'GameList'>;};
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'GameList'>;
+};
+
+type SortOrder = 'peak_desc' | 'peak_asc';
+
+type SearchState = {
+  query: string;
+  sortOrder: SortOrder;
+  results: Game[];
+  isFiltering: boolean;
+};
+
+type SearchAction =
+  | { type: 'SET_QUERY'; payload: string }
+  | { type: 'SET_SORT'; payload: SortOrder }
+  | { type: 'SET_RESULTS'; payload: Game[] }
+  | { type: 'CLEAR' };
+
+const initialState: SearchState = {
+  query: '',
+  sortOrder: 'peak_desc',
+  results: [],
+  isFiltering: false,
+};
+
+function searchReducer(state: SearchState, action: SearchAction): SearchState {
+  switch (action.type) {
+    case 'SET_QUERY':
+      return {
+        ...state,
+        query: action.payload,
+        isFiltering: action.payload.trim().length > 0,
+      };
+    case 'SET_SORT':
+      return {
+        ...state,
+        sortOrder: action.payload,
+      };
+    case 'SET_RESULTS':
+      return {
+        ...state,
+        results: action.payload,
+      };
+    case 'CLEAR':
+      return { ...initialState };
+    default:
+      return state;
+  }
+}
+
+function applyFilter(games: Game[], state: SearchState): Game[] {
+  let filtered = [...games];
+
+  if (state.query.trim().length > 0) {
+    filtered = filtered.filter((g) =>
+      g.appid.toString().includes(state.query.trim())
+    );
+  }
+
+  if (state.sortOrder === 'peak_desc') {
+    filtered.sort((a, b) => b.peak_in_game - a.peak_in_game);
+  } else {
+    filtered.sort((a, b) => a.peak_in_game - b.peak_in_game);
+  }
+
+  return filtered;
+}
 
 export default function GameListScreen({ navigation }: Props) {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchState, dispatch] = useReducer(searchReducer, initialState);
 
   useEffect(() => {
     fetchGames();
   }, []);
+
+  useEffect(() => {
+    const filtered = applyFilter(games, searchState);
+    dispatch({ type: 'SET_RESULTS', payload: filtered });
+  }, [searchState.query, searchState.sortOrder, games]);
 
   const fetchGames = async (): Promise<void> => {
     setLoading(true);
@@ -32,6 +105,7 @@ export default function GameListScreen({ navigation }: Props) {
       }));
 
       setGames(gamesFormatted);
+      dispatch({ type: 'SET_RESULTS', payload: gamesFormatted });
     } catch (err) {
       setError('Não foi possível carregar os jogos. Tente novamente.');
     } finally {
@@ -79,12 +153,52 @@ export default function GameListScreen({ navigation }: Props) {
   );
 
   return (
-    <FlatList
-      data={games}
-      keyExtractor={(item) => item.appid.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={styles.list}
-    />
+    <View style={{ flex: 1, backgroundColor: '#1b2838' }}>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Buscar por AppID..."
+        placeholderTextColor="#888"
+        keyboardType="numeric"
+        value={searchState.query}
+        onChangeText={(text) =>
+          dispatch({ type: 'SET_QUERY', payload: text })
+        }
+      />
+
+      <View style={styles.sortRow}>
+        <TouchableOpacity
+          style={[
+            styles.sortButton,
+            searchState.sortOrder === 'peak_desc' && styles.sortActive,
+          ]}
+          onPress={() => dispatch({ type: 'SET_SORT', payload: 'peak_desc' })}
+        >
+          <Text style={styles.sortText}>Maior pico</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.sortButton,
+            searchState.sortOrder === 'peak_asc' && styles.sortActive,
+          ]}
+          onPress={() => dispatch({ type: 'SET_SORT', payload: 'peak_asc' })}
+        >
+          <Text style={styles.sortText}>Menor pico</Text>
+        </TouchableOpacity>
+      </View>
+
+      {searchState.results.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Nenhum jogo encontrado.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={searchState.results}
+          keyExtractor={(item) => item.appid.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+        />
+      )}
+    </View>
   );
 }
 
@@ -93,7 +207,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1b2838',
   },
   loadingText: {
     color: '#c6d4df',
@@ -117,9 +230,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  searchInput: {
+    backgroundColor: '#2a475e',
+    color: '#fff',
+    margin: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  sortButton: {
+    flex: 1,
+    backgroundColor: '#2a475e',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  sortActive: {
+    backgroundColor: '#4c6b22',
+  },
+  sortText: {
+    color: '#fff',
+    fontSize: 13,
+  },
   list: {
-    padding: 16,
-    backgroundColor: '#1b2838',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   card: {
     backgroundColor: '#2a475e',
