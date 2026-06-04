@@ -2,29 +2,30 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import ListScreen from './src/screens/ListScreen';
-import DetailsScreen from './src/screens/DetailsScreen';
+import GameListScreen from './src/screens/GameListScreen';
+import GameDetailScreen from './src/screens/GameDetailScreen';
+import { RootStackParamList } from './src/types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator 
-        initialRouteName="List"
+        initialRouteName="GameList"
         screenOptions={{
           headerStyle: { backgroundColor: '#1b2838' },
           headerTintColor: '#fff',
         }}
       >
         <Stack.Screen 
-          name="List" 
-          component={ListScreen} 
+          name="GameList" 
+          component={GameListScreen} 
           options={{ title: 'Loja Steam' }} 
         />
         <Stack.Screen 
-          name="Details" 
-          component={DetailsScreen} 
+          name="GameDetail" 
+          component={GameDetailScreen} 
           options={{ title: 'Sobre o Jogo' }} 
         />
       </Stack.Navigator>
