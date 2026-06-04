@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState, useContext } from 'react';
+import { View, Text, Image, ActivityIndicator, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { storeApi } from '../services/steamApi';
 import { GameDetail, RootStackParamList } from '../types';
+import { WishlistContext } from '../context/WishlistContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GameDetail'>;
 
@@ -10,6 +11,7 @@ export default function GameDetailScreen({ route }: Props) {
   const { appid } = route.params;
   const [game, setGame] = useState<GameDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const { toggleFavorite, isFavorite } = useContext(WishlistContext);
 
   useEffect(() => {
     fetchGameDetails();
@@ -27,7 +29,7 @@ export default function GameDetailScreen({ route }: Props) {
         setGame(gameData.data);
       }
     } catch (error) {
-      console.error('Erro ao buscar detalhes:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -56,6 +58,18 @@ export default function GameDetailScreen({ route }: Props) {
       <View style={styles.content}>
         <Text style={styles.title}>{game.name}</Text>
         
+        <TouchableOpacity 
+          style={[
+            styles.favoriteButton, 
+            isFavorite(appid) ? styles.favoriteActive : styles.favoriteInactive
+          ]}
+          onPress={() => toggleFavorite(appid)}
+        >
+          <Text style={styles.favoriteText}>
+            {isFavorite(appid) ? '★ Remover da Wishlist' : '☆ Adicionar à Wishlist'}
+          </Text>
+        </TouchableOpacity>
+
         {game.price_overview && (
           <Text style={styles.price}>{game.price_overview.final_formatted}</Text>
         )}
@@ -104,6 +118,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 8,
+  },
+  favoriteButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  favoriteActive: {
+    backgroundColor: '#4c6b22',
+  },
+  favoriteInactive: {
+    backgroundColor: '#2a475e',
+  },
+  favoriteText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   price: {
     fontSize: 18,
