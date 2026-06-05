@@ -45,7 +45,7 @@ export default function App() {
           <Stack.Screen 
             name="Favorites" 
             component={FavoritesScreen} 
-            options={{ title: 'Minha Wishlist' }} 
+            options={{ title: 'Minha Lista de desejos' }} 
           />
         </Stack.Navigator>
       </NavigationContainer>
