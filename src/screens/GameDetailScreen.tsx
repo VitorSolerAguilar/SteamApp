@@ -66,7 +66,7 @@ export default function GameDetailScreen({ route }: Props) {
           onPress={() => toggleFavorite(appid)}
         >
           <Text style={styles.favoriteText}>
-            {isFavorite(appid) ? '★ Remover da Wishlist' : '☆ Adicionar à Wishlist'}
+            {isFavorite(appid) ? '★ Remover da Lista de desejos' : '☆ Adicionar à Lista de desejos'}
           </Text>
         </TouchableOpacity>
 
